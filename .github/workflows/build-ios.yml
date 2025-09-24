@@ -83,6 +83,25 @@ jobs:
           -allowProvisioningUpdates \
           archive
           
+    - name: Diagnose Certificates & Provisioning
+      run: |
+        echo "=== KEYCHAIN STATUS ==="
+        security list-keychains
+        security default-keychain
+
+        echo -e "\n=== CERTIFICATES IN KEYCHAIN ==="
+        security find-identity -v -p codesigning build.keychain || true
+
+        echo -e "\n=== PROVISIONING PROFILES ==="
+        ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ || true
+
+        echo -e "\n=== ARCHIVE CONTENTS ==="
+        ls -la fullmoon.xcarchive/
+        ls -la fullmoon.xcarchive/Products/Applications/ || true
+
+        echo -e "\n=== AVAILABLE EXPORT METHODS ==="
+        xcodebuild -exportArchive -archivePath fullmoon.xcarchive -exportPath ./test-export -exportOptionsPlist /dev/null 2>&1 || true
+
     - name: Export IPA
       run: |
         xcodebuild \
