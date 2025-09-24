@@ -27,17 +27,29 @@ jobs:
       run: |
         xcodebuild -resolvePackageDependencies -project fullmoon.xcodeproj
         
-    - name: Setup API Key
+    - name: Setup API Key & Export Options
       run: |
         # Keychain
         security create-keychain -p "" build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p "" build.keychain
         security set-keychain-settings -lut 21600 build.keychain
-        
+
         # API Key file
         mkdir -p ~/private_keys
         echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+        # Simple ExportOptions.plist
+        cat > ExportOptions.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>teamID</key>
+            <string>${{ secrets.TEAM_ID }}</string>
+        </dict>
+        </plist>
+        EOF
         
     - name: Disable AppIntents (temporary fix)
       run: |
@@ -73,6 +85,7 @@ jobs:
           -exportArchive \
           -archivePath fullmoon.xcarchive \
           -exportPath ./output \
+          -exportOptionsPlist ExportOptions.plist \
           -allowProvisioningUpdates \
           -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
           -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
