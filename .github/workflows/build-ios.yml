@@ -64,7 +64,7 @@ jobs:
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
-          -destination 'generic/platform=iOS' \
+          -sdk iphoneos \
           -configuration Release \
           -archivePath fullmoon.xcarchive \
           CODE_SIGN_STYLE=Automatic \
