@@ -1,0 +1,90 @@
+name: Build FullMoon iOS
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch: # Botão para executar manualmente
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      
+    - name: Setup Xcode
+      uses: maxim-lobanov/setup-xcode@v1
+      with:
+        xcode-version: '15.2'
+        
+    - name: Resolve Dependencies
+      run: |
+        xcodebuild -resolvePackageDependencies -project fullmoon.xcodeproj
+        
+    - name: Create ExportOptions.plist
+      run: |
+        cat > ExportOptions.plist << EOF
+        <?xml version="1.0" encoding="UTF-8"?>
+        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+        <plist version="1.0">
+        <dict>
+            <key>method</key>
+            <string>development</string>
+            <key>teamID</key>
+            <string>${{ secrets.TEAM_ID }}</string>
+            <key>signingStyle</key>
+            <string>automatic</string>
+            <key>stripSwiftSymbols</key>
+            <true/>
+        </dict>
+        </plist>
+        EOF
+        
+    - name: Setup Keychain & Apple Login
+      run: |
+        # Criar keychain temporário
+        security create-keychain -p "" build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p "" build.keychain
+        security set-keychain-settings -lut 21600 build.keychain
+        
+        # Login na Apple para download automático de certificados
+        xcrun altool --store-password-in-keychain-item "AC_PASSWORD" \
+          -u "${{ secrets.APPLE_ID }}" \
+          -p "${{ secrets.APP_PASSWORD }}"
+        
+    - name: Build & Archive
+      run: |
+        xcodebuild \
+          -project fullmoon.xcodeproj \
+          -scheme fullmoon \
+          -destination 'generic/platform=iOS' \
+          -configuration Release \
+          -archivePath fullmoon.xcarchive \
+          CODE_SIGN_STYLE=Automatic \
+          DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
+          -allowProvisioningUpdates \
+          archive
+          
+    - name: Export IPA
+      run: |
+        xcodebuild \
+          -exportArchive \
+          -archivePath fullmoon.xcarchive \
+          -exportPath ./output \
+          -exportOptionsPlist ExportOptions.plist \
+          -allowProvisioningUpdates
+          
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: FullMoon-iOS-${{ github.sha }}
+        path: "./output/*.ipa"
+        retention-days: 30
+        
+    - name: Show Success Message
+      run: |
+        echo "✅ IPA gerado com sucesso!"
+        echo "📱 Baixe o artifact e instale com AltStore"
+        ls -la ./output/
