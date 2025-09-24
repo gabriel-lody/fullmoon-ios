@@ -3,7 +3,7 @@ name: Build FullMoon iOS
 on:
   push:
     branches: [ main ]
-  workflow_dispatch: # Botão para executar manualmente
+  workflow_dispatch:
 
 jobs:
   build:
@@ -16,7 +16,12 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: '16.2.0'
+        xcode-version: 'latest-stable'
+        
+    - name: Install iOS Platform
+      run: |
+        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        xcodebuild -downloadPlatform iOS || true
         
     - name: Resolve Dependencies
       run: |
@@ -35,48 +40,27 @@ jobs:
             <string>${{ secrets.TEAM_ID }}</string>
             <key>signingStyle</key>
             <string>automatic</string>
-            <key>stripSwiftSymbols</key>
-            <true/>
         </dict>
         </plist>
         EOF
         
-    - name: Setup Keychain & Apple Login
-      env:
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
+    - name: Setup API Key
       run: |
-        # Criar keychain temporário
+        # Keychain
         security create-keychain -p "" build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p "" build.keychain
         security set-keychain-settings -lut 21600 build.keychain
         
-        # Configurar credenciais Apple via environment
-        export FASTLANE_USER="$APPLE_ID"
-        export FASTLANE_PASSWORD="$APP_PASSWORD"
-        export FASTLANE_DONT_STORE_PASSWORD=1
-        
-        # Tentar login direto via xcode-select 
-        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
-        
-        # Debug: mostrar o que temos configurado
-        echo "Configured for Apple ID: $APPLE_ID"
-        echo "Team ID: ${{ secrets.TEAM_ID }}"
+        # API Key file
+        mkdir -p ~/private_keys
+        echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
         
     - name: Build & Archive
-      env:
-        APPLE_ID: ${{ secrets.APPLE_ID }}
-        APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
       run: |
-        # Configurar credenciais para signing automático
-        export FASTLANE_USER="$APPLE_ID"
-        export FASTLANE_PASSWORD="$APP_PASSWORD"
-        export FASTLANE_DONT_STORE_PASSWORD=1
-        
-        # Usar um bundle ID único para evitar conflitos
-        UNIQUE_BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
-        echo "Using Bundle ID: $UNIQUE_BUNDLE_ID"
+        # Bundle ID único
+        BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
+        echo "Bundle ID: $BUNDLE_ID"
         
         xcodebuild \
           -project fullmoon.xcodeproj \
@@ -86,9 +70,11 @@ jobs:
           -archivePath fullmoon.xcarchive \
           CODE_SIGN_STYLE=Automatic \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
-          PRODUCT_BUNDLE_IDENTIFIER="$UNIQUE_BUNDLE_ID" \
+          PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+          -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+          -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+          -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
           -allowProvisioningUpdates \
-          -allowProvisioningDeviceRegistration \
           archive
           
     - name: Export IPA
@@ -98,17 +84,13 @@ jobs:
           -archivePath fullmoon.xcarchive \
           -exportPath ./output \
           -exportOptionsPlist ExportOptions.plist \
-          -allowProvisioningUpdates
+          -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+          -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
+          -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
           
     - name: Upload IPA
       uses: actions/upload-artifact@v4
       with:
-        name: FullMoon-iOS-${{ github.sha }}
+        name: FullMoon-${{ github.sha }}
         path: "./output/*.ipa"
         retention-days: 30
-        
-    - name: Show Success Message
-      run: |
-        echo "✅ IPA gerado com sucesso!"
-        echo "📱 Baixe o artifact e instale com AltStore"
-        ls -la ./output/
