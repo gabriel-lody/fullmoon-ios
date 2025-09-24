@@ -16,7 +16,7 @@ jobs:
     - name: Setup Xcode
       uses: maxim-lobanov/setup-xcode@v1
       with:
-        xcode-version: 'latest-stable'
+        xcode-version: '16.2.0'
         
     - name: Resolve Dependencies
       run: |
@@ -42,6 +42,9 @@ jobs:
         EOF
         
     - name: Setup Keychain & Apple Login
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
       run: |
         # Criar keychain temporário
         security create-keychain -p "" build.keychain
@@ -49,13 +52,19 @@ jobs:
         security unlock-keychain -p "" build.keychain
         security set-keychain-settings -lut 21600 build.keychain
         
-        # Login na Apple para download automático de certificados
-        xcrun altool --store-password-in-keychain-item "AC_PASSWORD" \
-          -u "${{ secrets.APPLE_ID }}" \
-          -p "${{ secrets.APP_PASSWORD }}"
+        # Configurar variáveis de ambiente para xcodebuild
+        export FASTLANE_USER="$APPLE_ID"
+        export FASTLANE_PASSWORD="$APP_PASSWORD"
         
     - name: Build & Archive
+      env:
+        APPLE_ID: ${{ secrets.APPLE_ID }}
+        APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
       run: |
+        # Configurar credenciais para signing automático
+        export FASTLANE_USER="$APPLE_ID"
+        export FASTLANE_PASSWORD="$APP_PASSWORD"
+        
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
@@ -65,6 +74,7 @@ jobs:
           CODE_SIGN_STYLE=Automatic \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           -allowProvisioningUpdates \
+          -authenticationKeyPath /dev/null \
           archive
           
     - name: Export IPA
