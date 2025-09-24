@@ -52,15 +52,32 @@ jobs:
         security unlock-keychain -p "" build.keychain
         security set-keychain-settings -lut 21600 build.keychain
         
-        # Configurar variáveis de ambiente para xcodebuild
+        # Configurar credenciais Apple via environment
         export FASTLANE_USER="$APPLE_ID"
         export FASTLANE_PASSWORD="$APP_PASSWORD"
+        export FASTLANE_DONT_STORE_PASSWORD=1
+        
+        # Tentar login direto via xcode-select 
+        sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+        
+        # Debug: mostrar o que temos configurado
+        echo "Configured for Apple ID: $APPLE_ID"
+        echo "Team ID: ${{ secrets.TEAM_ID }}"
         
     - name: Build & Archive
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
-      run: |        
+      run: |
+        # Configurar credenciais para signing automático
+        export FASTLANE_USER="$APPLE_ID"
+        export FASTLANE_PASSWORD="$APP_PASSWORD"
+        export FASTLANE_DONT_STORE_PASSWORD=1
+        
+        # Usar um bundle ID único para evitar conflitos
+        UNIQUE_BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
+        echo "Using Bundle ID: $UNIQUE_BUNDLE_ID"
+        
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
@@ -69,6 +86,7 @@ jobs:
           -archivePath fullmoon.xcarchive \
           CODE_SIGN_STYLE=Automatic \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
+          PRODUCT_BUNDLE_IDENTIFIER="$UNIQUE_BUNDLE_ID" \
           -allowProvisioningUpdates \
           -allowProvisioningDeviceRegistration \
           archive
