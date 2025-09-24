@@ -39,14 +39,12 @@ jobs:
         mkdir -p ~/private_keys
         echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
 
-        # Simple ExportOptions.plist
+        # Minimal ExportOptions.plist without method
         cat > ExportOptions.plist << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
-            <key>method</key>
-            <string>development</string>
             <key>teamID</key>
             <string>${{ secrets.TEAM_ID }}</string>
             <key>signingStyle</key>
