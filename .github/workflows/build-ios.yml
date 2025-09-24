@@ -71,6 +71,7 @@ jobs:
           CODE_SIGN_STYLE=Automatic \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+          SKIP_INSTALL=NO \
           -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
           -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
           -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
