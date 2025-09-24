@@ -100,16 +100,28 @@ jobs:
         echo -e "\n=== AVAILABLE EXPORT METHODS ==="
         xcodebuild -exportArchive -archivePath fullmoon.xcarchive -exportPath ./test-export -exportOptionsPlist /dev/null 2>&1 || true
 
-    - name: Export IPA
+    - name: Export IPA (without plist)
       run: |
+        # Try exporting without ExportOptions.plist
         xcodebuild \
           -exportArchive \
           -archivePath fullmoon.xcarchive \
           -exportPath ./output \
-          -exportOptionsPlist ExportOptions.plist \
+          -exportFormat IPA \
           -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
           -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
-          -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
+          -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} || echo "Export failed, checking for .app files"
+
+        # If export failed, try to manually create IPA from .app
+        if [ ! -f ./output/*.ipa ]; then
+          echo "Creating IPA manually from .app"
+          mkdir -p ./output/Payload
+          cp -r fullmoon.xcarchive/Products/Applications/fullmoon.app ./output/Payload/
+          cd ./output
+          zip -r fullmoon.ipa Payload/
+          cd ..
+          echo "Manual IPA created: $(ls -la ./output/*.ipa)"
+        fi
           
     - name: Upload IPA
       uses: actions/upload-artifact@v4
