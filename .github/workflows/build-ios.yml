@@ -60,11 +60,7 @@ jobs:
       env:
         APPLE_ID: ${{ secrets.APPLE_ID }}
         APP_PASSWORD: ${{ secrets.APP_PASSWORD }}
-      run: |
-        # Configurar credenciais para signing automático
-        export FASTLANE_USER="$APPLE_ID"
-        export FASTLANE_PASSWORD="$APP_PASSWORD"
-        
+      run: |        
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
@@ -74,7 +70,7 @@ jobs:
           CODE_SIGN_STYLE=Automatic \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           -allowProvisioningUpdates \
-          -authenticationKeyPath /dev/null \
+          -allowProvisioningDeviceRegistration \
           archive
           
     - name: Export IPA
