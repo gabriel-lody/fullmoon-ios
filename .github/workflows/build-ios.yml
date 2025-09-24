@@ -27,27 +27,6 @@ jobs:
       run: |
         xcodebuild -resolvePackageDependencies -project fullmoon.xcodeproj
         
-    - name: Create ExportOptions.plist
-      run: |
-        cat > ExportOptions.plist << EOF
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>method</key>
-            <string>app-store</string>
-            <key>teamID</key>
-            <string>${{ secrets.TEAM_ID }}</string>
-            <key>signingStyle</key>
-            <string>automatic</string>
-            <key>uploadSymbols</key>
-            <false/>
-            <key>stripSwiftSymbols</key>
-            <true/>
-        </dict>
-        </plist>
-        EOF
-        
     - name: Setup API Key
       run: |
         # Keychain
@@ -94,7 +73,7 @@ jobs:
           -exportArchive \
           -archivePath fullmoon.xcarchive \
           -exportPath ./output \
-          -exportOptionsPlist ExportOptions.plist \
+          -allowProvisioningUpdates \
           -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
           -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
           -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }}
