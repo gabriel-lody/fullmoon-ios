@@ -56,6 +56,12 @@ jobs:
         mkdir -p ~/private_keys
         echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
         
+    - name: Disable AppIntents (temporary fix)
+      run: |
+        # Renomear o arquivo problemático para que não seja compilado
+        mv fullmoon/Models/RequestLLMIntent.swift fullmoon/Models/RequestLLMIntent.swift.bak || true
+        echo "AppIntents disabled for build"
+        
     - name: Build & Archive
       run: |
         # Bundle ID único
@@ -72,7 +78,6 @@ jobs:
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           SKIP_INSTALL=NO \
-          ENABLE_APP_INTENTS_METADATA_EXTRACTION=NO \
           -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
           -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
           -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
