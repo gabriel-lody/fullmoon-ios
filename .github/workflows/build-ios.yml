@@ -160,4 +160,5 @@ jobs:
         export FASTLANE_APPLE_API_KEY=api_key.json
         fastlane pilot upload \
           --ipa ./output/fullmoon.ipa \
+          --username ${{ secrets.APPLE_ID }} \
           --skip-waiting-for-build-processing
