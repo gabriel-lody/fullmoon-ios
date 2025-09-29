@@ -27,7 +27,7 @@ jobs:
       run: |
         xcodebuild -resolvePackageDependencies -project fullmoon.xcodeproj
         
-    - name: Setup API Key & Export Options
+    - name: Setup Signing & Provisioning
       run: |
         # Keychain
         security create-keychain -p "" build.keychain
@@ -38,6 +38,13 @@ jobs:
         # API Key file
         mkdir -p ~/private_keys
         echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
+
+        # Install provisioning profile from secrets
+        mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+        echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision
+
+        echo "Provisioning profile installed:"
+        ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
 
         # Auto-detect ExportOptions.plist
         cat > ExportOptions.plist << EOF
