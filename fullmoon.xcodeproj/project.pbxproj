@@ -401,7 +401,7 @@
 			repositoryURL = "https://github.com/huggingface/swift-transformers.git";
 			requirement = {
 				kind = upToNextMajorVersion;
-				minimumVersion = 0.1.17;
+				minimumVersion = 1.0.0;
 			};
 		};
 		860E9CE22CB0564600C5BB52 /* XCRemoteSwiftPackageReference "mlx-swift-examples" */ = {
