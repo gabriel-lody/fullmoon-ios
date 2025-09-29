@@ -75,19 +75,22 @@ jobs:
         BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
         echo "Bundle ID: $BUNDLE_ID"
         
+        # Get provisioning profile UUID
+        PROFILE_UUID=$(grep -a -A1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        echo "Provisioning Profile UUID: $PROFILE_UUID"
+
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
           -sdk iphoneos \
           -configuration Release \
           -archivePath fullmoon.xcarchive \
-          CODE_SIGN_STYLE=Automatic \
+          CODE_SIGN_STYLE=Manual \
+          CODE_SIGN_IDENTITY="Apple Distribution" \
+          PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           SKIP_INSTALL=NO \
-          -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
-          -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
-          -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
           archive
           
     - name: Diagnose Certificates & Provisioning
