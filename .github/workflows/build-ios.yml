@@ -139,3 +139,17 @@ jobs:
         name: FullMoon-${{ github.sha }}
         path: "./output/*.ipa"
         retention-days: 30
+
+    - name: Upload to TestFlight
+      if: github.ref == 'refs/heads/main'
+      run: |
+        # Install fastlane
+        brew install fastlane
+
+        # Upload to TestFlight
+        fastlane pilot upload \
+          --ipa ./output/fullmoon.ipa \
+          --api_key_path ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
+          --api_key_id ${{ secrets.ASC_KEY_ID }} \
+          --issuer_id ${{ secrets.ASC_ISSUER_ID }} \
+          --skip_waiting_for_build_processing
