@@ -142,23 +142,9 @@ jobs:
 
     - name: Upload to TestFlight
       if: github.ref == 'refs/heads/main'
-      run: |
-        # Install fastlane
-        brew install fastlane
-
-        # Create App Store Connect API Key JSON
-        cat > api_key.json << EOF
-        {
-          "key_id": "${{ secrets.ASC_KEY_ID }}",
-          "issuer_id": "${{ secrets.ASC_ISSUER_ID }}",
-          "key": "$(cat ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 | tr -d '\n')",
-          "in_house": false
-        }
-        EOF
-
-        # Upload to TestFlight
-        export FASTLANE_APPLE_API_KEY=api_key.json
-        fastlane pilot upload \
-          --ipa ./output/fullmoon.ipa \
-          --username ${{ secrets.APPLE_ID }} \
-          --skip-waiting-for-build-processing
+      uses: apple-actions/upload-testflight-build@v1
+      with:
+        app-path: ./output/fullmoon.ipa
+        issuer-id: ${{ secrets.ASC_ISSUER_ID }}
+        api-key-id: ${{ secrets.ASC_KEY_ID }}
+        api-private-key: ${{ secrets.ASC_PRIVATE_KEY }}
