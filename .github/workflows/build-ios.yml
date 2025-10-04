@@ -35,6 +35,11 @@ jobs:
         security unlock-keychain -p "" build.keychain
         security set-keychain-settings -lut 21600 build.keychain
 
+        # Install distribution certificate (p12)
+        echo "${{ secrets.DISTRIBUTION_CERTIFICATE }}" | base64 --decode > distribution.p12
+        security import distribution.p12 -k build.keychain -P "" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/security
+        security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
+
         # API Key file
         mkdir -p ~/private_keys
         echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
@@ -46,8 +51,8 @@ jobs:
         echo "Provisioning profile installed:"
         ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
 
-        # Show profile details
-        security cms -D -i ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision || true
+        echo "Certificates in keychain:"
+        security find-identity -v -p codesigning build.keychain
 
         # Auto-detect ExportOptions.plist
         cat > ExportOptions.plist << EOF
@@ -74,7 +79,7 @@ jobs:
         # Bundle ID único
         BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
         echo "Bundle ID: $BUNDLE_ID"
-        
+
         # Get provisioning profile UUID
         PROFILE_UUID=$(grep -a -A1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
         echo "Provisioning Profile UUID: $PROFILE_UUID"
@@ -85,11 +90,11 @@ jobs:
           -sdk iphoneos \
           -configuration Release \
           -archivePath fullmoon.xcarchive \
-          CODE_SIGN_STYLE=Manual \
-          CODE_SIGN_IDENTITY="Apple Distribution" \
-          PROVISIONING_PROFILE_SPECIFIER="$PROFILE_UUID" \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+          CODE_SIGN_STYLE[sdk=iphoneos*]=Manual \
+          CODE_SIGN_IDENTITY[sdk=iphoneos*]="Apple Distribution" \
+          PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*]="$PROFILE_UUID" \
           SKIP_INSTALL=NO \
           archive
           
