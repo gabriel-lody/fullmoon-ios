@@ -63,19 +63,33 @@ jobs:
         echo "Certificates in keychain:"
         security find-identity -v -p codesigning build.keychain
 
-        # Auto-detect ExportOptions.plist
+        # ExportOptions.plist with manual signing for export
+        PROFILE_UUID=$(grep -a -A1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
+
         cat > ExportOptions.plist << EOF
         <?xml version="1.0" encoding="UTF-8"?>
         <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
         <plist version="1.0">
         <dict>
+            <key>method</key>
+            <string>app-store</string>
             <key>teamID</key>
             <string>${{ secrets.TEAM_ID }}</string>
+            <key>provisioningProfiles</key>
+            <dict>
+                <key>$BUNDLE_ID</key>
+                <string>$PROFILE_UUID</string>
+            </dict>
+            <key>signingCertificate</key>
+            <string>Apple Distribution</string>
             <key>signingStyle</key>
-            <string>automatic</string>
+            <string>manual</string>
         </dict>
         </plist>
         EOF
+
+        echo "ExportOptions.plist created with profile UUID: $PROFILE_UUID"
         
     - name: Disable AppIntents (temporary fix)
       run: |
@@ -85,26 +99,15 @@ jobs:
         
     - name: Build & Archive
       run: |
-        # Bundle ID único
-        BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
-        echo "Bundle ID: $BUNDLE_ID"
-
-        # Get provisioning profile UUID
-        PROFILE_UUID=$(grep -a -A1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
-        echo "Provisioning Profile UUID: $PROFILE_UUID"
-
-        # Build using xcconfig to apply settings only to main target
+        # Build with automatic signing - manual signing happens in export
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
           -sdk iphoneos \
           -configuration Release \
           -archivePath fullmoon.xcarchive \
-          -xcconfig Distribution.xcconfig \
-          DEVELOPMENT_TEAM_OVERRIDE=${{ secrets.TEAM_ID }} \
-          BUNDLE_ID_OVERRIDE="$BUNDLE_ID" \
-          PROFILE_UUID_OVERRIDE="$PROFILE_UUID" \
-          SKIP_INSTALL=NO \
+          CODE_SIGN_STYLE=Automatic \
+          DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           archive
           
     - name: Diagnose Certificates & Provisioning
@@ -126,28 +129,16 @@ jobs:
         echo -e "\n=== AVAILABLE EXPORT METHODS ==="
         xcodebuild -exportArchive -archivePath fullmoon.xcarchive -exportPath ./test-export -exportOptionsPlist /dev/null 2>&1 || true
 
-    - name: Export IPA (without plist)
+    - name: Export IPA
       run: |
-        # Try exporting without ExportOptions.plist
+        # Export with manual signing using ExportOptions.plist
         xcodebuild \
           -exportArchive \
           -archivePath fullmoon.xcarchive \
           -exportPath ./output \
-          -exportFormat IPA \
-          -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
-          -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
-          -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} || echo "Export failed, checking for .app files"
+          -exportOptionsPlist ExportOptions.plist
 
-        # If export failed, try to manually create IPA from .app
-        if [ ! -f ./output/*.ipa ]; then
-          echo "Creating IPA manually from .app"
-          mkdir -p ./output/Payload
-          cp -r fullmoon.xcarchive/Products/Applications/fullmoon.app ./output/Payload/
-          cd ./output
-          zip -r fullmoon.ipa Payload/
-          cd ..
-          echo "Manual IPA created: $(ls -la ./output/*.ipa)"
-        fi
+        echo "IPA exported: $(ls -la ./output/*.ipa)"
           
     - name: Upload IPA
       uses: actions/upload-artifact@v4
