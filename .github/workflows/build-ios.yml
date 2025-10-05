@@ -39,11 +39,13 @@ jobs:
         security unlock-keychain -p "" build.keychain
         security set-keychain-settings -lut 21600 build.keychain
 
-        # Install distribution certificate (p12)
-        echo "${{ secrets.DISTRIBUTION_CERTIFICATE }}" | base64 --decode > distribution.p12
+        # Install distribution certificate and key (separate PEM files)
+        echo "${{ secrets.DISTRIBUTION_CERT }}" | base64 --decode > cert.pem
+        echo "${{ secrets.DISTRIBUTION_KEY }}" | base64 --decode > key.pem
 
-        # Import certificate without password
-        security import distribution.p12 -k build.keychain -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/security -A
+        # Import certificate and key separately
+        security import cert.pem -k build.keychain -T /usr/bin/codesign -A
+        security import key.pem -k build.keychain -T /usr/bin/codesign -A
 
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
