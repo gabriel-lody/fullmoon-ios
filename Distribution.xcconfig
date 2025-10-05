@@ -1,6 +1,6 @@
-// Distribution signing configuration
-CODE_SIGN_STYLE = Manual
-CODE_SIGN_IDENTITY = Apple Distribution
-DEVELOPMENT_TEAM = $(DEVELOPMENT_TEAM_OVERRIDE)
-PRODUCT_BUNDLE_IDENTIFIER = $(BUNDLE_ID_OVERRIDE)
-PROVISIONING_PROFILE_SPECIFIER = $(PROFILE_UUID_OVERRIDE)
+// Distribution signing configuration - only for app target
+CODE_SIGN_STYLE[sdk=iphoneos*] = Manual
+CODE_SIGN_IDENTITY[sdk=iphoneos*] = Apple Distribution
+DEVELOPMENT_TEAM[sdk=iphoneos*] = $(DEVELOPMENT_TEAM_OVERRIDE)
+PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*] = $(BUNDLE_ID_OVERRIDE)
+PROVISIONING_PROFILE_SPECIFIER[sdk=iphoneos*] = $(PROFILE_UUID_OVERRIDE)
