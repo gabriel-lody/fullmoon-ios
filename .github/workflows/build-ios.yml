@@ -89,19 +89,21 @@ jobs:
         BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
         echo "Bundle ID: $BUNDLE_ID"
 
+        # Get provisioning profile UUID
+        PROFILE_UUID=$(grep -a -A1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
+        echo "Provisioning Profile UUID: $PROFILE_UUID"
+
+        # Build using xcconfig to apply settings only to main target
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
           -sdk iphoneos \
           -configuration Release \
           -archivePath fullmoon.xcarchive \
-          -allowProvisioningUpdates \
-          -allowProvisioningDeviceRegistration \
-          -authenticationKeyPath ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8 \
-          -authenticationKeyID ${{ secrets.ASC_KEY_ID }} \
-          -authenticationKeyIssuerID ${{ secrets.ASC_ISSUER_ID }} \
-          DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
-          PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
+          -xcconfig Distribution.xcconfig \
+          DEVELOPMENT_TEAM_OVERRIDE=${{ secrets.TEAM_ID }} \
+          BUNDLE_ID_OVERRIDE="$BUNDLE_ID" \
+          PROFILE_UUID_OVERRIDE="$PROFILE_UUID" \
           SKIP_INSTALL=NO \
           archive
           
