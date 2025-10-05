@@ -103,13 +103,16 @@ jobs:
         BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
         echo "Bundle ID: $BUNDLE_ID"
 
-        # Build with automatic signing - manual signing happens in export
+        # Build with automatic signing and allow provisioning profile generation
+        # This creates a temporary development profile for building, but won't create new certificates
+        # The final IPA will be re-signed with the App Store profile during export
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
           -sdk iphoneos \
           -configuration Release \
           -archivePath fullmoon.xcarchive \
+          -allowProvisioningUpdates \
           CODE_SIGN_STYLE=Automatic \
           DEVELOPMENT_TEAM=${{ secrets.TEAM_ID }} \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
