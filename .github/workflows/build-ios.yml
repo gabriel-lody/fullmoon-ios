@@ -38,8 +38,7 @@ jobs:
         # Install distribution certificate (p12)
         echo "${{ secrets.DISTRIBUTION_CERTIFICATE }}" | base64 --decode > distribution.p12
 
-        # Import certificate - try with empty password first, then without password flag
-        security import distribution.p12 -k build.keychain -P "" -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/security -A || \
+        # Import certificate without password
         security import distribution.p12 -k build.keychain -T /usr/bin/codesign -T /usr/bin/productsign -T /usr/bin/security -A
 
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
