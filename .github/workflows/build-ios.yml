@@ -33,37 +33,28 @@ jobs:
         
     - name: Setup Signing & Provisioning
       run: |
-        # Keychain
+        # Create and configure keychain
         security create-keychain -p "" build.keychain
         security default-keychain -s build.keychain
         security unlock-keychain -p "" build.keychain
         security set-keychain-settings -lut 21600 build.keychain
 
-        # Install distribution certificate and key (separate PEM files)
+        # Import distribution certificate and key
         echo "${{ secrets.DISTRIBUTION_CERT }}" | base64 --decode > cert.pem
         echo "${{ secrets.DISTRIBUTION_KEY }}" | base64 --decode > key.pem
-
-        # Import certificate and key separately
         security import cert.pem -k build.keychain -T /usr/bin/codesign -A
         security import key.pem -k build.keychain -T /usr/bin/codesign -A
-
         security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "" build.keychain
 
-        # API Key file
+        # Install App Store Connect API Key
         mkdir -p ~/private_keys
         echo "${{ secrets.ASC_PRIVATE_KEY }}" > ~/private_keys/AuthKey_${{ secrets.ASC_KEY_ID }}.p8
 
-        # Install provisioning profile from secrets
+        # Install provisioning profile
         mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
         echo "${{ secrets.PROVISIONING_PROFILE }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision
 
-        echo "Provisioning profile installed:"
-        ls -la ~/Library/MobileDevice/Provisioning\ Profiles/
-
-        echo "Certificates in keychain:"
-        security find-identity -v -p codesigning build.keychain
-
-        # ExportOptions.plist with manual signing for export
+        # Create ExportOptions.plist
         PROFILE_UUID=$(grep -a -A1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
         BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
 
@@ -88,27 +79,15 @@ jobs:
         </dict>
         </plist>
         EOF
-
-        echo "ExportOptions.plist created with profile UUID: $PROFILE_UUID"
         
-    - name: Disable AppIntents (temporary fix)
+    - name: Disable AppIntents
       run: |
-        # Renomear o arquivo problemático para que não seja compilado
         mv fullmoon/Models/RequestLLMIntent.swift fullmoon/Models/RequestLLMIntent.swift.bak || true
-        echo "AppIntents disabled for build"
-        
+
     - name: Build & Archive
       run: |
-        # Generate dynamic bundle ID
         BUNDLE_ID="com.github.$(echo $GITHUB_REPOSITORY | tr '[:upper:]' '[:lower:]' | tr '/' '.')"
-        echo "Bundle ID: $BUNDLE_ID"
 
-        # Get provisioning profile UUID
-        PROFILE_UUID=$(grep -a -A1 "<key>UUID</key>" ~/Library/MobileDevice/Provisioning\ Profiles/fullmoon.mobileprovision | tail -1 | sed 's/.*<string>\(.*\)<\/string>.*/\1/')
-        echo "Provisioning Profile UUID: $PROFILE_UUID"
-
-        # Build without code signing - signing happens during export
-        # This avoids applying provisioning profiles to Swift Package binary targets
         xcodebuild \
           -project fullmoon.xcodeproj \
           -scheme fullmoon \
@@ -121,36 +100,14 @@ jobs:
           CODE_SIGNING_ALLOWED=NO \
           PRODUCT_BUNDLE_IDENTIFIER="$BUNDLE_ID" \
           archive
-          
-    - name: Diagnose Certificates & Provisioning
-      run: |
-        echo "=== KEYCHAIN STATUS ==="
-        security list-keychains
-        security default-keychain
-
-        echo -e "\n=== CERTIFICATES IN KEYCHAIN ==="
-        security find-identity -v -p codesigning build.keychain || true
-
-        echo -e "\n=== PROVISIONING PROFILES ==="
-        ls -la ~/Library/MobileDevice/Provisioning\ Profiles/ || true
-
-        echo -e "\n=== ARCHIVE CONTENTS ==="
-        ls -la fullmoon.xcarchive/
-        ls -la fullmoon.xcarchive/Products/Applications/ || true
-
-        echo -e "\n=== AVAILABLE EXPORT METHODS ==="
-        xcodebuild -exportArchive -archivePath fullmoon.xcarchive -exportPath ./test-export -exportOptionsPlist /dev/null 2>&1 || true
 
     - name: Export IPA
       run: |
-        # Export with manual signing using ExportOptions.plist
         xcodebuild \
           -exportArchive \
           -archivePath fullmoon.xcarchive \
           -exportPath ./output \
           -exportOptionsPlist ExportOptions.plist
-
-        echo "IPA exported: $(ls -la ./output/*.ipa)"
           
     - name: Upload IPA
       uses: actions/upload-artifact@v4
