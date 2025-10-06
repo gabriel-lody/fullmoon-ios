@@ -175,7 +175,10 @@ struct OnboardingInstallModelView: View {
     func checkMetal3Support() {
         #if os(iOS)
         if let device = MTLCreateSystemDefaultDevice() {
-            deviceSupportsMetal3 = device.supportsFamily(.metal3)
+            // Metal 3 is supported on A13 (iPhone 11) and later
+            // iPhone 11 uses Apple6 GPU family, so we check for .apple6 or .metal3
+            deviceSupportsMetal3 = device.supportsFamily(.apple6) ||
+                                   device.supportsFamily(.metal3)
         }
         #endif
     }
