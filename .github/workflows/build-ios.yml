@@ -93,8 +93,8 @@ jobs:
         echo "Current build: $CURRENT_BUILD"
         echo "New build: $NEW_BUILD"
 
-        # Increment build number in both Debug and Release configurations
-        sed -i "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEW_BUILD;/g" fullmoon.xcodeproj/project.pbxproj
+        # Increment build number in both Debug and Release configurations (macOS sed requires empty string for -i)
+        sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEW_BUILD;/g" fullmoon.xcodeproj/project.pbxproj
 
         echo "Build number incremented to $NEW_BUILD"
 
