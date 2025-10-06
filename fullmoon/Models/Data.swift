@@ -2,7 +2,7 @@
 //  Data.swift
 //  fullmoon
 //
-//  Created by Jordan Singer on 10/5/24.
+//  Created by Gabriel Lody on 10/5/24.
 //
 
 import SwiftUI
