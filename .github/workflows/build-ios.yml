@@ -88,15 +88,17 @@ jobs:
       run: |
         # Extract current build number
         CURRENT_BUILD=$(grep -m1 "CURRENT_PROJECT_VERSION = " fullmoon.xcodeproj/project.pbxproj | sed 's/[^0-9]*//g')
-        NEW_BUILD=$((CURRENT_BUILD + 1))
 
-        echo "Current build: $CURRENT_BUILD"
-        echo "New build: $NEW_BUILD"
+        # Use GitHub run number to ensure uniqueness
+        NEW_BUILD=${{ github.run_number }}
 
-        # Increment build number in both Debug and Release configurations (macOS sed requires empty string for -i)
+        echo "Current build in repo: $CURRENT_BUILD"
+        echo "New build (GitHub run #): $NEW_BUILD"
+
+        # Update build number in both Debug and Release configurations (macOS sed requires empty string for -i)
         sed -i '' "s/CURRENT_PROJECT_VERSION = $CURRENT_BUILD;/CURRENT_PROJECT_VERSION = $NEW_BUILD;/g" fullmoon.xcodeproj/project.pbxproj
 
-        echo "Build number incremented to $NEW_BUILD"
+        echo "Build number set to $NEW_BUILD"
 
     - name: Build & Archive
       run: |
