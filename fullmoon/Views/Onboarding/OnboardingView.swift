@@ -22,7 +22,7 @@ struct OnboardingView: View {
                         .frame(width: 64, height: 64)
                     
                     VStack(spacing: 4) {
-                        Text("fullmoon")
+                        Text("Neumond")
                             .font(.title)
                             .fontWeight(.semibold)
                         Text("chat with private and local large language models")
