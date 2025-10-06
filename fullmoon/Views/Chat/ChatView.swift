@@ -277,7 +277,7 @@ struct ChatView: View {
 
             if let currentThread = currentThread {
                 generatingThreadID = currentThread.id
-                Task {
+                Task { @MainActor in
                     let message = prompt
                     prompt = ""
                     appManager.playHaptic()

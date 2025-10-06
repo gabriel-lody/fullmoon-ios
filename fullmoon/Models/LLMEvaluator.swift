@@ -109,7 +109,8 @@ class LLMEvaluator {
         do {
             let modelContainer = try await load(modelName: modelName)
 
-            // augment the prompt as needed
+            // augment the prompt as needed - MUST be called on MainActor before modelContainer.perform
+            // because it accesses SwiftData Thread object which requires MainActor context
             let promptHistory = await modelContainer.configuration.getPromptHistory(thread: thread, systemPrompt: systemPrompt)
 
             if await modelContainer.configuration.modelType == .reasoning {
