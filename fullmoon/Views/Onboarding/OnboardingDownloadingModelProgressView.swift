@@ -2,7 +2,7 @@
 //  OnboardingDownloadingModelProgressView.swift
 //  fullmoon
 //
-//  Created by Jordan Singer on 10/4/24.
+//  Created by Gabriel Lody on 10/4/24.
 //
 
 import SwiftUI

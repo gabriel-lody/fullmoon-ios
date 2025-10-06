@@ -2,7 +2,7 @@
 //  SettingsView.swift
 //  fullmoon
 //
-//  Created by Jordan Singer on 10/4/24.
+//  Created by Gabriel Lody on 10/4/24.
 //
 
 import SwiftUI
@@ -51,15 +51,12 @@ struct SettingsView: View {
                             Text("v\(Bundle.main.releaseVersionNumber ?? "0").\(Bundle.main.buildVersionNumber ?? "0")")
                                 .font(.footnote)
                                 .foregroundStyle(.tertiary)
-                            Image(.madeByMainframe)
-                                .resizable()
-                                .aspectRatio(contentMode: .fit)
+                            Text("Lodysoft")
+                                .font(.footnote)
                                 .foregroundStyle(.tertiary)
                             #if os(macOS)
-                                .frame(height: 16)
                                 .padding(.top, 11)
                             #else
-                                .frame(height: 18)
                                 .padding(.top, 16)
                             #endif
                         }
