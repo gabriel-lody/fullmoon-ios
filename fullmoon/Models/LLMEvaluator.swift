@@ -98,7 +98,7 @@ class LLMEvaluator {
         cancelled = true
     }
 
-    func generate(modelName: String, thread: Thread, systemPrompt: String) async -> String {
+    func generate(modelName: String, messages: [[String: String]], systemPrompt: String) async -> String {
         guard !running else { return "" }
 
         running = true
@@ -109,13 +109,26 @@ class LLMEvaluator {
         do {
             let modelContainer = try await load(modelName: modelName)
 
-            // Get configuration first (outside MainActor)
+            // Get configuration
             let configuration = await modelContainer.configuration
 
-            // augment the prompt as needed - MUST be called on MainActor before modelContainer.perform
-            // because it accesses SwiftData Thread object which requires MainActor context
-            let promptHistory = await MainActor.run {
-                configuration.getPromptHistory(thread: thread, systemPrompt: systemPrompt)
+            // Build prompt history with system prompt prepended
+            var promptHistory: [[String: String]] = [
+                ["role": "system", "content": systemPrompt]
+            ]
+
+            // Apply formatForTokenizer if this is a reasoning model
+            if configuration.modelType == .reasoning {
+                let formattedMessages = messages.map { msg -> [String: String] in
+                    var formatted = msg
+                    if let content = msg["content"] {
+                        formatted["content"] = configuration.formatForTokenizer(content)
+                    }
+                    return formatted
+                }
+                promptHistory.append(contentsOf: formattedMessages)
+            } else {
+                promptHistory.append(contentsOf: messages)
             }
 
             if configuration.modelType == .reasoning {

@@ -284,7 +284,12 @@ struct ChatView: View {
                     sendMessage(Message(role: .user, content: message, thread: currentThread))
                     isPromptFocused = true
                     if let modelName = appManager.currentModelName {
-                        let output = await llm.generate(modelName: modelName, thread: currentThread, systemPrompt: appManager.systemPrompt)
+                        // Extract messages from SwiftData on MainActor BEFORE async call
+                        // Note: formatForTokenizer will be called inside generate() if needed
+                        let messages = currentThread.sortedMessages.map { msg in
+                            return ["role": msg.role.rawValue, "content": msg.content]
+                        }
+                        let output = await llm.generate(modelName: modelName, messages: messages, systemPrompt: appManager.systemPrompt)
                         sendMessage(Message(role: .assistant, content: output, thread: currentThread, generatingTime: llm.thinkingTime))
                         generatingThreadID = nil
                     }
