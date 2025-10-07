@@ -165,7 +165,8 @@ final class Thread: Sendable {
     var timestamp: Date
     
     @Relationship var messages: [Message] = []
-    
+
+    @MainActor
     var sortedMessages: [Message] {
         return messages.sorted { $0.timestamp < $1.timestamp }
     }
