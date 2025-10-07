@@ -176,6 +176,11 @@ final class Thread: Sendable {
         return sortedMessages.first?.content
     }
 
+    @MainActor
+    func addMessage(_ message: Message) {
+        messages.append(message)
+    }
+
     init() {
         self.id = UUID()
         self.timestamp = Date()

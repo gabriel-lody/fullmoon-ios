@@ -44,7 +44,7 @@ struct RequestLLMIntent: AppIntent {
         let appManager = AppManager()
         
         if prompt.isEmpty {
-            if let output = thread.messages.last?.content {
+            if let output = thread.sortedMessages.last?.content {
                 return .result(value: output, dialog: "continue chatting in the app") // if prompt is empty and this is not the first message, return the result
             } else {
                 throw $prompt.requestValue("chat") // re-prompt
@@ -55,7 +55,7 @@ struct RequestLLMIntent: AppIntent {
             _ = try? await llm.load(modelName: modelName)
 
             let message = Message(role: .user, content: prompt, thread: thread)
-            thread.messages.append(message)
+            thread.addMessage(message)
 
             // Extract messages from SwiftData on MainActor BEFORE async call
             let messages = thread.sortedMessages.map { msg in
@@ -63,15 +63,15 @@ struct RequestLLMIntent: AppIntent {
             }
 
             var output = await llm.generate(modelName: modelName, messages: messages, systemPrompt: appManager.systemPrompt + systemPrompt)
-            
+
             let maxCharacters = maxCharacters ?? .max
-            
+
             if output.count > maxCharacters {
                 output = String(output.prefix(maxCharacters)).trimmingCharacters(in: .whitespaces) + "..."
             }
-            
+
             let responseMessage = Message(role: .assistant, content: output, thread: thread)
-            thread.messages.append(responseMessage)
+            thread.addMessage(responseMessage)
 
             if continuous {
                 throw $prompt.requestValue("\(output)") // re-prompt infinitely until user cancels
