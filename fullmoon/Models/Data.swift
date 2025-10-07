@@ -170,7 +170,12 @@ final class Thread: Sendable {
     var sortedMessages: [Message] {
         return messages.sorted { $0.timestamp < $1.timestamp }
     }
-    
+
+    @MainActor
+    var firstMessageContent: String? {
+        return sortedMessages.first?.content
+    }
+
     init() {
         self.id = UUID()
         self.timestamp = Date()

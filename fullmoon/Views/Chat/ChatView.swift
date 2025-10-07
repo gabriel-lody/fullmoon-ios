@@ -170,8 +170,8 @@ struct ChatView: View {
     @MainActor
     var chatTitle: String {
         if let currentThread = currentThread {
-            if let firstMessage = currentThread.sortedMessages.first {
-                return firstMessage.content
+            if let content = currentThread.firstMessageContent {
+                return content
             }
         }
 

@@ -31,8 +31,8 @@ struct ChatsListView: View {
                     ForEach(filteredThreads, id: \.id) { thread in
                         VStack(alignment: .leading) {
                             ZStack {
-                                if let firstMessage = thread.sortedMessages.first {
-                                    Text(firstMessage.content)
+                                if let content = thread.firstMessageContent {
+                                    Text(content)
                                         .lineLimit(1)
                                 } else {
                                     Text("untitled")
@@ -134,9 +134,10 @@ struct ChatsListView: View {
         .environment(\.dynamicTypeSize, appManager.appFontSize.getFontSize())
     }
 
+    @MainActor
     var filteredThreads: [Thread] {
         threads.filter { thread in
-            search.isEmpty || thread.messages.contains { message in
+            search.isEmpty || thread.sortedMessages.contains { message in
                 message.content.localizedCaseInsensitiveContains(search)
             }
         }
