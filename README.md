@@ -1,4 +1,4 @@
-# Neumond iOS
+# Neumond
 
 **Neumond** is a fork of [fullmoon](https://github.com/mainframecomputer/fullmoon-ios) by Mainframe, maintained by [Gabriel Lody](https://github.com/gabriel-lody) / Lodysoft.
 
@@ -23,7 +23,3 @@ Neumond is made possible by:
 - **[fullmoon](https://github.com/mainframecomputer/fullmoon-ios)** - Original project by [Mainframe](https://mainfra.me)
 - **[MLX Swift](https://github.com/ml-explore/mlx-swift)** - Apple's array framework for ML on Apple silicon
 - **[MLX](https://github.com/ml-explore/mlx)** - Machine learning framework for Apple silicon
-
-## License
-
-MIT License - See [LICENSE](LICENSE) file for details.
