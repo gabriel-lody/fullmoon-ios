@@ -275,25 +275,23 @@ struct ChatView: View {
                 try? modelContext.save()
             }
 
-            if let currentThread = currentThread {
-                generatingThreadID = currentThread.id
-                Task { @MainActor in
-                    // Capture currentThread at the start to prevent accessing invalid/changed thread
-                    guard let thread = currentThread else { return }
-
+            if let activeThread = currentThread {
+                generatingThreadID = activeThread.id
+                Task { @MainActor [activeThread] in
+                    // Capture activeThread at the start to prevent accessing invalid/changed thread
                     let message = prompt
                     prompt = ""
                     appManager.playHaptic()
-                    sendMessage(Message(role: .user, content: message, thread: thread))
+                    sendMessage(Message(role: .user, content: message, thread: activeThread))
                     isPromptFocused = true
                     if let modelName = appManager.currentModelName {
                         // Extract messages from SwiftData on MainActor BEFORE async call
                         // Note: formatForTokenizer will be called inside generate() if needed
-                        let messages = thread.sortedMessages.map { msg in
+                        let messages = activeThread.sortedMessages.map { msg in
                             return ["role": msg.role.rawValue, "content": msg.content]
                         }
                         let output = await llm.generate(modelName: modelName, messages: messages, systemPrompt: appManager.systemPrompt)
-                        sendMessage(Message(role: .assistant, content: output, thread: thread, generatingTime: llm.thinkingTime))
+                        sendMessage(Message(role: .assistant, content: output, thread: activeThread, generatingTime: llm.thinkingTime))
                         generatingThreadID = nil
                     }
                 }
