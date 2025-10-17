@@ -1,10 +1,10 @@
 # Neumond
 
-**Neumond** is a fork of [fullmoon](https://github.com/mainframecomputer/fullmoon-ios) by Mainframe, maintained by [Gabriel Lody](https://github.com/gabriel-lody) / Lodysoft.
+**Neumond** is a fork of [fullmoon](https://github.com/mainframecomputer/fullmoon-ios) by Mainframe, maintained by [Gabriel Lody](https://github.com/gabriel-lody).
 
 An iOS app to chat with local large language models that's optimized for Apple silicon. Your chat history is saved locally, and you can customize the appearance of the app.
 
-## ✨ Enhancements
+## Enhancements
 
 - ✅ **iPhone 11 Support** - Extended compatibility to A13 Bionic devices and later
 
