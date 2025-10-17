@@ -134,7 +134,6 @@ struct ChatsListView: View {
         .environment(\.dynamicTypeSize, appManager.appFontSize.getFontSize())
     }
 
-    @MainActor
     var filteredThreads: [Thread] {
         threads.filter { thread in
             search.isEmpty || thread.sortedMessages.contains { message in

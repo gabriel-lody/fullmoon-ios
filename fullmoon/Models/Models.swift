@@ -74,7 +74,6 @@ extension ModelConfiguration: @retroactive Equatable {
         }
     }
 
-    @MainActor
     func getPromptHistory(thread: Thread, systemPrompt: String) -> [[String: String]] {
         var history: [[String: String]] = []
 

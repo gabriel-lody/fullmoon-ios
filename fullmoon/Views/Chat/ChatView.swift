@@ -167,7 +167,6 @@ struct ChatView: View {
         #endif
     }
 
-    @MainActor
     var chatTitle: String {
         if let currentThread = currentThread {
             if let content = currentThread.firstMessageContent {
