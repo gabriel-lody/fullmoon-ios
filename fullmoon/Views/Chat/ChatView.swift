@@ -277,17 +277,20 @@ struct ChatView: View {
 
             if let activeThread = currentThread {
                 generatingThreadID = activeThread.id
-                // Extract all SwiftData values synchronously on MainActor BEFORE Task
-                let messages = activeThread.sortedMessages.map { msg in
-                    return ["role": msg.role.rawValue, "content": msg.content]
-                }
-                Task { @MainActor in
+                Task { @MainActor [activeThread] in
                     let message = prompt
                     prompt = ""
                     appManager.playHaptic()
+
+                    // Create and send user message
                     sendMessage(Message(role: .user, content: message, thread: activeThread))
                     isPromptFocused = true
+
                     if let modelName = appManager.currentModelName {
+                        // Extract messages AFTER sending user message, so it's included
+                        let messages = activeThread.sortedMessages.map { msg in
+                            return ["role": msg.role.rawValue, "content": msg.content]
+                        }
                         let output = await llm.generate(modelName: modelName, messages: messages, systemPrompt: appManager.systemPrompt)
                         sendMessage(Message(role: .assistant, content: output, thread: activeThread, generatingTime: llm.thinkingTime))
                         generatingThreadID = nil
