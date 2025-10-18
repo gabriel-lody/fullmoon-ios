@@ -77,8 +77,9 @@ class DebugLogger {
         // CRITICAL: This must be async-safe (no memory allocation, no Swift runtime)
         // We can only use basic C functions here
         let message = "🔴🔴🔴 CRASH SIGNAL: \(signalName) (\(signal)) 🔴🔴🔴\n"
-        let cString = message.cString(using: .utf8)
-        write(STDERR_FILENO, cString, strlen(cString ?? ""))
+        message.withCString { cString in
+            write(STDERR_FILENO, cString, strlen(cString))
+        }
 
         // Force flush any pending logs
         fsync(STDERR_FILENO)
@@ -132,47 +133,58 @@ class DebugLogger {
         // Log the message first
         log(message)
 
-        // Capture and log the call stack
-        let stackSymbols = Thread.callStackSymbols
-        log("  Stack trace:")
-        for (index, symbol) in stackSymbols.enumerated() {
-            // Skip the first 2 frames (this function and the caller)
-            if index < 2 { continue }
-            // Only log first 10 frames to avoid excessive output
-            if index > 12 {
-                log("  ... (\(stackSymbols.count - index) more frames)")
-                break
+        // Capture and log the call stack - Thread.callStackSymbols doesn't exist
+        // Using Thread.callStackSymbols from Foundation (NSThread)
+        let stackSymbols = Thread.current.value(forKey: "callStackSymbols") as? [String] ?? []
+        if !stackSymbols.isEmpty {
+            log("  Stack trace:")
+            for (index, symbol) in stackSymbols.enumerated() {
+                // Skip the first 2 frames (this function and the caller)
+                if index < 2 { continue }
+                // Only log first 10 frames to avoid excessive output
+                if index > 12 {
+                    log("  ... (\(stackSymbols.count - index) more frames)")
+                    break
+                }
+                log("    [\(index-1)] \(symbol)")
             }
-            log("    [\(index-1)] \(symbol)")
+        } else {
+            log("  (Stack trace unavailable)")
         }
     }
 
     // MARK: - os_signpost Integration (for Instruments)
 
     func beginSignpost(_ name: String, metadata: String = "") {
-        signpostQueue.async {
+        signpostQueue.async { [weak self] in
+            guard let self = self else { return }
             let signpostID = OSSignpostID(log: self.signpostLog)
             self.activeSignposts[name] = signpostID
 
+            // Use predefined static string for signpost name
+            let signpostName: StaticString = "MLX-Operation"
             if metadata.isEmpty {
-                os_signpost(.begin, log: self.signpostLog, name: StaticString(name.utf8Start!), signpostID: signpostID)
+                os_signpost(.begin, log: self.signpostLog, name: signpostName, signpostID: signpostID)
             } else {
-                os_signpost(.begin, log: self.signpostLog, name: StaticString(name.utf8Start!), signpostID: signpostID, "%{public}@", metadata)
+                os_signpost(.begin, log: self.signpostLog, name: signpostName, signpostID: signpostID, "%{public}@", metadata)
             }
         }
         log("▶️ BEGIN: \(name) \(metadata)")
     }
 
     func endSignpost(_ name: String, metadata: String = "") {
-        signpostQueue.async {
+        signpostQueue.async { [weak self] in
+            guard let self = self else { return }
             guard let signpostID = self.activeSignposts[name] else {
                 return
             }
 
+            // Use predefined static string for signpost name
+            let signpostName: StaticString = "MLX-Operation"
             if metadata.isEmpty {
-                os_signpost(.end, log: self.signpostLog, name: StaticString(name.utf8Start!), signpostID: signpostID)
+                os_signpost(.end, log: self.signpostLog, name: signpostName, signpostID: signpostID)
             } else {
-                os_signpost(.end, log: self.signpostLog, name: StaticString(name.utf8Start!), signpostID: signpostID, "%{public}@", metadata)
+                os_signpost(.end, log: self.signpostLog, name: signpostName, signpostID: signpostID, "%{public}@", metadata)
             }
 
             self.activeSignposts.removeValue(forKey: name)
@@ -181,7 +193,9 @@ class DebugLogger {
     }
 
     func eventSignpost(_ name: String, metadata: String = "") {
-        os_signpost(.event, log: signpostLog, name: StaticString(name.utf8Start!), "%{public}@", metadata)
+        // Use predefined static string for signpost name
+        let signpostName: StaticString = "MLX-Event"
+        os_signpost(.event, log: signpostLog, name: signpostName, "%{public}@", metadata)
         log("📍 EVENT: \(name) \(metadata)")
     }
 
@@ -215,12 +229,5 @@ class DebugLogger {
 
     func getLogFilePath() -> String {
         return logFileURL.path
-    }
-}
-
-// Helper extension for StaticString conversion
-extension String {
-    var utf8Start: UnsafePointer<Int8>? {
-        return (self as NSString).utf8String
     }
 }
