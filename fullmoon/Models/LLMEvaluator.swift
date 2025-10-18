@@ -99,9 +99,13 @@ class LLMEvaluator {
     }
 
     func generate(modelName: String, thread: Thread, systemPrompt: String) async -> String {
-        DebugLogger.shared.log("🟠 [LLM-1] generate() called with thread: \(thread.id)")
+        // Start high-level signpost for Instruments
+        DebugLogger.shared.beginSignpost("LLM-Generate", metadata: "model=\(modelName)")
+
+        DebugLogger.shared.logWithMemory("🟠 [LLM-1] generate() called with thread: \(thread.id)")
         guard !running else {
             DebugLogger.shared.log("🟠 [LLM-1a] already running, returning empty")
+            DebugLogger.shared.endSignpost("LLM-Generate", metadata: "aborted-already-running")
             return ""
         }
 
@@ -111,9 +115,11 @@ class LLMEvaluator {
         startTime = Date()
 
         do {
-            DebugLogger.shared.log("🟠 [LLM-2] loading model: \(modelName)")
+            DebugLogger.shared.beginSignpost("LLM-LoadModel", metadata: modelName)
+            DebugLogger.shared.logWithMemory("🟠 [LLM-2] loading model: \(modelName)")
             let modelContainer = try await load(modelName: modelName)
-            DebugLogger.shared.log("🟠 [LLM-3] model loaded successfully")
+            DebugLogger.shared.logWithMemory("🟠 [LLM-3] model loaded successfully")
+            DebugLogger.shared.endSignpost("LLM-LoadModel")
 
             DebugLogger.shared.log("🟠 [LLM-4] getting configuration")
             let configuration = await modelContainer.configuration
@@ -150,15 +156,28 @@ class LLMEvaluator {
             DebugLogger.shared.log("🟠 [LLM-10] seeding MLXRandom")
             MLXRandom.seed(UInt64(Date.timeIntervalSinceReferenceDate * 1000))
 
-            DebugLogger.shared.logWithStack("🟠 [LLM-11] calling modelContainer.perform")
+            // Critical section - this is where the crash happens
+            DebugLogger.shared.beginSignpost("MLX-Perform", metadata: "CRITICAL-SECTION")
+            DebugLogger.shared.logWithMemory("🟠 [LLM-11] calling modelContainer.perform")
+            DebugLogger.shared.logMemoryPressure()
+
             let result = try await modelContainer.perform { context in
-                DebugLogger.shared.logWithStack("🟠 [LLM-12] inside perform block, preparing input")
+                DebugLogger.shared.logWithMemory("🟠 [LLM-12] inside perform block, preparing input")
+
+                DebugLogger.shared.beginSignpost("MLX-PrepareInput")
                 let input = try await context.processor.prepare(input: .init(messages: promptHistory))
-                DebugLogger.shared.logWithStack("🟠 [LLM-13] input prepared, calling MLXLMCommon.generate")
+                DebugLogger.shared.endSignpost("MLX-PrepareInput")
+                DebugLogger.shared.logWithMemory("🟠 [LLM-13] input prepared, calling MLXLMCommon.generate")
+
+                // Final checkpoint before MLX native code
+                DebugLogger.shared.eventSignpost("MLX-EnteringNativeGenerate", metadata: "LAST-SWIFT-CHECKPOINT")
+                DebugLogger.shared.logMemoryPressure()
+
                 return try MLXLMCommon.generate(
                     input: input, parameters: generateParameters, context: context
                 ) { tokens in
-                    DebugLogger.shared.logWithStack("🟠 [LLM-13a] callback called with \(tokens.count) tokens")
+                    // If we get here, the crash didn't happen in MLX initialization
+                    DebugLogger.shared.log("🟠 [LLM-13a] callback called with \(tokens.count) tokens")
 
                     var cancelled = false
                     Task { @MainActor in
@@ -183,19 +202,25 @@ class LLMEvaluator {
                 }
             }
 
-            DebugLogger.shared.log("🟠 [LLM-14] modelContainer.perform completed")
+            DebugLogger.shared.endSignpost("MLX-Perform")
+            DebugLogger.shared.logWithMemory("🟠 [LLM-14] modelContainer.perform completed")
+
             // update the text if needed, e.g. we haven't displayed because of displayEveryNTokens
             if result.output != output {
                 output = result.output
             }
             stat = " Tokens/second: \(String(format: "%.3f", result.tokensPerSecond))"
             DebugLogger.shared.log("🟠 [LLM-15] generation completed successfully")
+            DebugLogger.shared.endSignpost("LLM-Generate", metadata: "success")
 
         } catch {
             output = "Failed: \(error)"
+            DebugLogger.shared.log("🔴 [LLM-ERROR] \(error)")
+            DebugLogger.shared.endSignpost("LLM-Generate", metadata: "error=\(error)")
         }
 
         running = false
+        DebugLogger.shared.logMemoryPressure()
         return output
     }
 }
