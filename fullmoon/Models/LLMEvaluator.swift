@@ -119,15 +119,26 @@ class LLMEvaluator {
             let configuration = await modelContainer.configuration
             DebugLogger.shared.log("🟠 [LLM-5] configuration retrieved")
 
-            // Extract messages from SwiftData BEFORE entering perform block
-            // to avoid accessing SwiftData relationships from background thread
-            DebugLogger.shared.log("🟠 [LLM-6] extracting messages from thread")
+            // Extract messages from SwiftData and convert to plain dictionaries
+            // BEFORE entering perform block to avoid passing SwiftData objects
+            // to background thread
+            DebugLogger.shared.log("🟠 [LLM-6] extracting and converting messages from thread")
             let messages = thread.sortedMessages
             DebugLogger.shared.log("🟠 [LLM-6a] extracted \(messages.count) messages")
 
+            // Convert SwiftData Message objects to plain dictionaries immediately
+            // to detach from ModelContext
+            let messageDicts: [[String: String]] = messages.map { message in
+                [
+                    "role": message.role.rawValue,
+                    "content": message.content
+                ]
+            }
+            DebugLogger.shared.log("🟠 [LLM-6b] converted to \(messageDicts.count) plain dictionaries")
+
             // augment the prompt as needed
             DebugLogger.shared.log("🟠 [LLM-7] calling getPromptHistory")
-            let promptHistory = await configuration.getPromptHistory(messages: messages, systemPrompt: systemPrompt)
+            let promptHistory = await configuration.getPromptHistory(messageDicts: messageDicts, systemPrompt: systemPrompt)
             DebugLogger.shared.log("🟠 [LLM-8] promptHistory received with \(promptHistory.count) items")
 
             if configuration.modelType == .reasoning {

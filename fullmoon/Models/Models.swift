@@ -74,7 +74,7 @@ extension ModelConfiguration: @retroactive Equatable {
         }
     }
 
-    func getPromptHistory(messages: [Message], systemPrompt: String) -> [[String: String]] {
+    func getPromptHistory(messageDicts: [[String: String]], systemPrompt: String) -> [[String: String]] {
         var history: [[String: String]] = []
 
         // system prompt
@@ -83,12 +83,13 @@ extension ModelConfiguration: @retroactive Equatable {
             "content": systemPrompt,
         ])
 
-        // messages (already sorted by caller)
-        for message in messages {
-            let role = message.role.rawValue
+        // messages (already sorted and converted to plain dictionaries by caller)
+        for messageDict in messageDicts {
+            let role = messageDict["role"] ?? "user"
+            let content = messageDict["content"] ?? ""
             history.append([
                 "role": role,
-                "content": formatForTokenizer(message.content), // remove reasoning part
+                "content": formatForTokenizer(content), // remove reasoning part
             ])
         }
 
