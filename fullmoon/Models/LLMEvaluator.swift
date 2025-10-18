@@ -119,25 +119,31 @@ class LLMEvaluator {
             let configuration = await modelContainer.configuration
             DebugLogger.shared.log("🟠 [LLM-5] configuration retrieved")
 
+            // Extract messages from SwiftData BEFORE entering perform block
+            // to avoid accessing SwiftData relationships from background thread
+            DebugLogger.shared.log("🟠 [LLM-6] extracting messages from thread")
+            let messages = thread.sortedMessages
+            DebugLogger.shared.log("🟠 [LLM-6a] extracted \(messages.count) messages")
+
             // augment the prompt as needed
-            DebugLogger.shared.log("🟠 [LLM-6] calling getPromptHistory")
-            let promptHistory = await configuration.getPromptHistory(thread: thread, systemPrompt: systemPrompt)
-            DebugLogger.shared.log("🟠 [LLM-7] promptHistory received with \(promptHistory.count) items")
+            DebugLogger.shared.log("🟠 [LLM-7] calling getPromptHistory")
+            let promptHistory = await configuration.getPromptHistory(messages: messages, systemPrompt: systemPrompt)
+            DebugLogger.shared.log("🟠 [LLM-8] promptHistory received with \(promptHistory.count) items")
 
             if configuration.modelType == .reasoning {
-                DebugLogger.shared.log("🟠 [LLM-8] reasoning model detected")
+                DebugLogger.shared.log("🟠 [LLM-9] reasoning model detected")
                 isThinking = true
             }
 
             // each time you generate you will get something new
-            DebugLogger.shared.log("🟠 [LLM-9] seeding MLXRandom")
+            DebugLogger.shared.log("🟠 [LLM-10] seeding MLXRandom")
             MLXRandom.seed(UInt64(Date.timeIntervalSinceReferenceDate * 1000))
 
-            DebugLogger.shared.log("🟠 [LLM-10] calling modelContainer.perform")
+            DebugLogger.shared.log("🟠 [LLM-11] calling modelContainer.perform")
             let result = try await modelContainer.perform { context in
-                DebugLogger.shared.log("🟠 [LLM-11] inside perform block, preparing input")
+                DebugLogger.shared.log("🟠 [LLM-12] inside perform block, preparing input")
                 let input = try await context.processor.prepare(input: .init(messages: promptHistory))
-                DebugLogger.shared.log("🟠 [LLM-12] input prepared, calling MLXLMCommon.generate")
+                DebugLogger.shared.log("🟠 [LLM-13] input prepared, calling MLXLMCommon.generate")
                 return try MLXLMCommon.generate(
                     input: input, parameters: generateParameters, context: context
                 ) { tokens in
@@ -163,13 +169,13 @@ class LLMEvaluator {
                 }
             }
 
-            DebugLogger.shared.log("🟠 [LLM-13] modelContainer.perform completed")
+            DebugLogger.shared.log("🟠 [LLM-14] modelContainer.perform completed")
             // update the text if needed, e.g. we haven't displayed because of displayEveryNTokens
             if result.output != output {
                 output = result.output
             }
             stat = " Tokens/second: \(String(format: "%.3f", result.tokensPerSecond))"
-            DebugLogger.shared.log("🟠 [LLM-14] generation completed successfully")
+            DebugLogger.shared.log("🟠 [LLM-15] generation completed successfully")
 
         } catch {
             output = "Failed: \(error)"

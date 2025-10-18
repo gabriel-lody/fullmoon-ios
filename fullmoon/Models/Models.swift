@@ -74,7 +74,7 @@ extension ModelConfiguration: @retroactive Equatable {
         }
     }
 
-    func getPromptHistory(thread: Thread, systemPrompt: String) -> [[String: String]] {
+    func getPromptHistory(messages: [Message], systemPrompt: String) -> [[String: String]] {
         var history: [[String: String]] = []
 
         // system prompt
@@ -83,8 +83,8 @@ extension ModelConfiguration: @retroactive Equatable {
             "content": systemPrompt,
         ])
 
-        // messages
-        for message in thread.sortedMessages {
+        // messages (already sorted by caller)
+        for message in messages {
             let role = message.role.rawValue
             history.append([
                 "role": role,
