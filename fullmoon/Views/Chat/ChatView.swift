@@ -279,41 +279,27 @@ struct ChatView: View {
                 DebugLogger.shared.log("🔵 [4] new thread created and saved")
             }
 
-            if let activeThread = currentThread {
-                DebugLogger.shared.log("🔵 [5] activeThread exists, id: \(activeThread.id)")
-                generatingThreadID = activeThread.id
-                DebugLogger.shared.log("🔵 [6] extracting messages from SwiftData")
-                // Extract existing messages BEFORE Task to avoid accessing SwiftData after modifications
-                var messageHistory = activeThread.sortedMessages.map { msg in
-                    return ["role": msg.role.rawValue, "content": msg.content]
-                }
-                DebugLogger.shared.log("🔵 [7] extracted \(messageHistory.count) messages")
-
-                Task { @MainActor [activeThread] in
-                    DebugLogger.shared.log("🔵 [8] Task started")
-                    let userMessage = prompt
+            if let currentThread = currentThread {
+                DebugLogger.shared.log("🔵 [5] currentThread exists, id: \(currentThread.id)")
+                generatingThreadID = currentThread.id
+                Task {
+                    DebugLogger.shared.log("🔵 [6] Task started")
+                    let message = prompt
                     prompt = ""
                     appManager.playHaptic()
-
-                    DebugLogger.shared.log("🔵 [9] calling sendMessage for user message")
-                    // Create and send user message
-                    sendMessage(Message(role: .user, content: userMessage, thread: activeThread))
-                    DebugLogger.shared.log("🔵 [10] sendMessage completed for user message")
+                    DebugLogger.shared.log("🔵 [7] calling sendMessage for user message")
+                    sendMessage(Message(role: .user, content: message, thread: currentThread))
+                    DebugLogger.shared.log("🔵 [8] sendMessage completed for user message")
                     isPromptFocused = true
-
                     if let modelName = appManager.currentModelName {
-                        DebugLogger.shared.log("🔵 [11] adding user message to local history")
-                        // Add user message to history manually instead of accessing SwiftData again
-                        messageHistory.append(["role": "user", "content": userMessage])
-                        DebugLogger.shared.log("🔵 [12] starting LLM generation with \(messageHistory.count) messages")
-
-                        let output = await llm.generate(modelName: modelName, messages: messageHistory, systemPrompt: appManager.systemPrompt)
-                        DebugLogger.shared.log("🔵 [13] LLM generation completed")
-                        DebugLogger.shared.log("🔵 [14] calling sendMessage for assistant message")
-                        sendMessage(Message(role: .assistant, content: output, thread: activeThread, generatingTime: llm.thinkingTime))
-                        DebugLogger.shared.log("🔵 [15] sendMessage completed for assistant message")
+                        DebugLogger.shared.log("🔵 [9] calling llm.generate")
+                        let output = await llm.generate(modelName: modelName, thread: currentThread, systemPrompt: appManager.systemPrompt)
+                        DebugLogger.shared.log("🔵 [10] llm.generate completed")
+                        DebugLogger.shared.log("🔵 [11] calling sendMessage for assistant message")
+                        sendMessage(Message(role: .assistant, content: output, thread: currentThread, generatingTime: llm.thinkingTime))
+                        DebugLogger.shared.log("🔵 [12] sendMessage completed for assistant message")
                         generatingThreadID = nil
-                        DebugLogger.shared.log("🔵 [16] generation flow completed")
+                        DebugLogger.shared.log("🔵 [13] generation flow completed")
                     }
                 }
             }

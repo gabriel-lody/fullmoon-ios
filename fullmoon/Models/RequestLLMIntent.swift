@@ -57,12 +57,7 @@ struct RequestLLMIntent: AppIntent {
             let message = Message(role: .user, content: prompt, thread: thread)
             thread.addMessage(message)
 
-            // Extract messages from SwiftData on MainActor BEFORE async call
-            let messages = thread.sortedMessages.map { msg in
-                return ["role": msg.role.rawValue, "content": msg.content]
-            }
-
-            var output = await llm.generate(modelName: modelName, messages: messages, systemPrompt: appManager.systemPrompt + systemPrompt)
+            var output = await llm.generate(modelName: modelName, thread: thread, systemPrompt: appManager.systemPrompt + systemPrompt)
 
             let maxCharacters = maxCharacters ?? .max
 

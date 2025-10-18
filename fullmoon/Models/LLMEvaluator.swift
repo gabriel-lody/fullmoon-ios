@@ -98,8 +98,12 @@ class LLMEvaluator {
         cancelled = true
     }
 
-    func generate(modelName: String, messages: [[String: String]], systemPrompt: String) async -> String {
-        guard !running else { return "" }
+    func generate(modelName: String, thread: Thread, systemPrompt: String) async -> String {
+        DebugLogger.shared.log("🟠 [LLM-1] generate() called with thread: \(thread.id)")
+        guard !running else {
+            DebugLogger.shared.log("🟠 [LLM-1a] already running, returning empty")
+            return ""
+        }
 
         running = true
         cancelled = false
@@ -107,39 +111,33 @@ class LLMEvaluator {
         startTime = Date()
 
         do {
+            DebugLogger.shared.log("🟠 [LLM-2] loading model: \(modelName)")
             let modelContainer = try await load(modelName: modelName)
+            DebugLogger.shared.log("🟠 [LLM-3] model loaded successfully")
 
-            // Get configuration
+            DebugLogger.shared.log("🟠 [LLM-4] getting configuration")
             let configuration = await modelContainer.configuration
+            DebugLogger.shared.log("🟠 [LLM-5] configuration retrieved")
 
-            // Build prompt history with system prompt prepended
-            var promptHistory: [[String: String]] = [
-                ["role": "system", "content": systemPrompt]
-            ]
-
-            // Apply formatForTokenizer if this is a reasoning model
-            if configuration.modelType == .reasoning {
-                let formattedMessages = messages.map { msg -> [String: String] in
-                    var formatted = msg
-                    if let content = msg["content"] {
-                        formatted["content"] = configuration.formatForTokenizer(content)
-                    }
-                    return formatted
-                }
-                promptHistory.append(contentsOf: formattedMessages)
-            } else {
-                promptHistory.append(contentsOf: messages)
-            }
+            // augment the prompt as needed
+            DebugLogger.shared.log("🟠 [LLM-6] calling getPromptHistory")
+            let promptHistory = await configuration.getPromptHistory(thread: thread, systemPrompt: systemPrompt)
+            DebugLogger.shared.log("🟠 [LLM-7] promptHistory received with \(promptHistory.count) items")
 
             if configuration.modelType == .reasoning {
+                DebugLogger.shared.log("🟠 [LLM-8] reasoning model detected")
                 isThinking = true
             }
 
             // each time you generate you will get something new
+            DebugLogger.shared.log("🟠 [LLM-9] seeding MLXRandom")
             MLXRandom.seed(UInt64(Date.timeIntervalSinceReferenceDate * 1000))
 
+            DebugLogger.shared.log("🟠 [LLM-10] calling modelContainer.perform")
             let result = try await modelContainer.perform { context in
+                DebugLogger.shared.log("🟠 [LLM-11] inside perform block, preparing input")
                 let input = try await context.processor.prepare(input: .init(messages: promptHistory))
+                DebugLogger.shared.log("🟠 [LLM-12] input prepared, calling MLXLMCommon.generate")
                 return try MLXLMCommon.generate(
                     input: input, parameters: generateParameters, context: context
                 ) { tokens in
@@ -165,11 +163,13 @@ class LLMEvaluator {
                 }
             }
 
+            DebugLogger.shared.log("🟠 [LLM-13] modelContainer.perform completed")
             // update the text if needed, e.g. we haven't displayed because of displayEveryNTokens
             if result.output != output {
                 output = result.output
             }
             stat = " Tokens/second: \(String(format: "%.3f", result.tokensPerSecond))"
+            DebugLogger.shared.log("🟠 [LLM-14] generation completed successfully")
 
         } catch {
             output = "Failed: \(error)"
