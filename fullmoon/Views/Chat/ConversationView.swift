@@ -181,13 +181,10 @@ struct ConversationView: View {
     // Use @Query with sort to safely access messages from SwiftData
     @Query(sort: \Message.timestamp) private var allMessages: [Message]
 
-    // Filter messages for this thread - use compactMap to safely handle nil threads
+    // Filter messages for this thread using threadID instead of relationship
+    // This avoids accessing the thread relationship which can cause crashes during SwiftData updates
     private var threadMessages: [Message] {
-        allMessages.compactMap { message -> Message? in
-            guard let messageThread = message.thread else { return nil }
-            guard messageThread.id == thread.id else { return nil }
-            return message
-        }
+        allMessages.filter { $0.threadID == thread.id }
     }
 
     @State private var scrollID: String?

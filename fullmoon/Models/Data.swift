@@ -145,15 +145,17 @@ class Message {
     var content: String
     var timestamp: Date
     var generatingTime: TimeInterval?
-    
+    var threadID: UUID? // Store threadID directly to avoid relationship access during SwiftData updates
+
     @Relationship(inverse: \Thread.messages) var thread: Thread?
-    
+
     init(role: Role, content: String, thread: Thread? = nil, generatingTime: TimeInterval? = nil) {
         self.id = UUID()
         self.role = role
         self.content = content
         self.timestamp = Date()
         self.thread = thread
+        self.threadID = thread?.id // Capture thread ID at creation time
         self.generatingTime = generatingTime
     }
 }
