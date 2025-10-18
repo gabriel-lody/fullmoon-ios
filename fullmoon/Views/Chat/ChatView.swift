@@ -277,21 +277,25 @@ struct ChatView: View {
 
             if let activeThread = currentThread {
                 generatingThreadID = activeThread.id
+                // Extract existing messages BEFORE Task to avoid accessing SwiftData after modifications
+                var messageHistory = activeThread.sortedMessages.map { msg in
+                    return ["role": msg.role.rawValue, "content": msg.content]
+                }
+
                 Task { @MainActor [activeThread] in
-                    let message = prompt
+                    let userMessage = prompt
                     prompt = ""
                     appManager.playHaptic()
 
                     // Create and send user message
-                    sendMessage(Message(role: .user, content: message, thread: activeThread))
+                    sendMessage(Message(role: .user, content: userMessage, thread: activeThread))
                     isPromptFocused = true
 
                     if let modelName = appManager.currentModelName {
-                        // Extract messages AFTER sending user message, so it's included
-                        let messages = activeThread.sortedMessages.map { msg in
-                            return ["role": msg.role.rawValue, "content": msg.content]
-                        }
-                        let output = await llm.generate(modelName: modelName, messages: messages, systemPrompt: appManager.systemPrompt)
+                        // Add user message to history manually instead of accessing SwiftData again
+                        messageHistory.append(["role": "user", "content": userMessage])
+
+                        let output = await llm.generate(modelName: modelName, messages: messageHistory, systemPrompt: appManager.systemPrompt)
                         sendMessage(Message(role: .assistant, content: output, thread: activeThread, generatingTime: llm.thinkingTime))
                         generatingThreadID = nil
                     }
