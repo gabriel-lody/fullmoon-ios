@@ -184,7 +184,10 @@ struct ConversationView: View {
     // Filter messages for this thread using threadID instead of relationship
     // This avoids accessing the thread relationship which can cause crashes during SwiftData updates
     private var threadMessages: [Message] {
-        allMessages.filter { $0.threadID == thread.id }
+        DebugLogger.shared.log("🟣 threadMessages computed: filtering \(allMessages.count) messages for thread \(thread.id)")
+        let filtered = allMessages.filter { $0.threadID == thread.id }
+        DebugLogger.shared.log("🟣 threadMessages computed: found \(filtered.count) messages")
+        return filtered
     }
 
     @State private var scrollID: String?
