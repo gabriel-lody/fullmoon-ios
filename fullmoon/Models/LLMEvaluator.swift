@@ -150,15 +150,15 @@ class LLMEvaluator {
             DebugLogger.shared.log("🟠 [LLM-10] seeding MLXRandom")
             MLXRandom.seed(UInt64(Date.timeIntervalSinceReferenceDate * 1000))
 
-            DebugLogger.shared.log("🟠 [LLM-11] calling modelContainer.perform")
+            DebugLogger.shared.logWithStack("🟠 [LLM-11] calling modelContainer.perform")
             let result = try await modelContainer.perform { context in
-                DebugLogger.shared.log("🟠 [LLM-12] inside perform block, preparing input")
+                DebugLogger.shared.logWithStack("🟠 [LLM-12] inside perform block, preparing input")
                 let input = try await context.processor.prepare(input: .init(messages: promptHistory))
-                DebugLogger.shared.log("🟠 [LLM-13] input prepared, calling MLXLMCommon.generate")
+                DebugLogger.shared.logWithStack("🟠 [LLM-13] input prepared, calling MLXLMCommon.generate")
                 return try MLXLMCommon.generate(
                     input: input, parameters: generateParameters, context: context
                 ) { tokens in
-                    DebugLogger.shared.log("🟠 [LLM-13a] callback called with \(tokens.count) tokens")
+                    DebugLogger.shared.logWithStack("🟠 [LLM-13a] callback called with \(tokens.count) tokens")
 
                     var cancelled = false
                     Task { @MainActor in
