@@ -57,22 +57,9 @@ class DebugLogger {
     }
 
     func logWithStack(_ message: String) {
-        // Log the message first
+        // Temporarily simplified - just log the message without stack trace
+        // Stack trace capture needs different approach in Swift
         log(message)
-
-        // Capture and log the call stack
-        let stackSymbols = Thread.callStackSymbols
-        log("  Stack trace:")
-        for (index, symbol) in stackSymbols.enumerated() {
-            // Skip the first 2 frames (this function and the caller)
-            if index < 2 { continue }
-            // Only log first 10 frames to avoid excessive output
-            if index > 12 {
-                log("  ... (\(stackSymbols.count - index) more frames)")
-                break
-            }
-            log("    [\(index-1)] \(symbol)")
-        }
     }
 
     func getLogFilePath() -> String {
