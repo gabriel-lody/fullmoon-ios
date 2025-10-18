@@ -178,31 +178,29 @@ struct ConversationView: View {
     let thread: Thread
     let generatingThreadID: UUID?
 
-    // Use @Query to safely access messages from SwiftData
-    @Query private var allMessages: [Message]
+    // Use @Query with sort to safely access messages from SwiftData
+    @Query(sort: \Message.timestamp) private var allMessages: [Message]
 
-    // Filter messages for this thread and sort them
+    // Filter messages for this thread - use compactMap to safely handle nil threads
     private var threadMessages: [Message] {
-        allMessages
-            .filter { $0.thread?.id == thread.id }
-            .sorted { $0.timestamp < $1.timestamp }
+        allMessages.compactMap { message -> Message? in
+            guard let messageThread = message.thread else { return nil }
+            guard messageThread.id == thread.id else { return nil }
+            return message
+        }
     }
 
     @State private var scrollID: String?
     @State private var scrollInterrupted = false
 
     var body: some View {
-        DebugLogger.shared.log("🔴 ConversationView body evaluated for thread: \(thread.id)")
-        return ScrollViewReader { scrollView in
+        ScrollViewReader { scrollView in
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(threadMessages) { message in
                         MessageView(message: message)
                             .padding()
                             .id(message.id.uuidString)
-                            .onAppear {
-                                DebugLogger.shared.log("🔴 MessageView appeared for message id: \(message.id)")
-                            }
                     }
 
                     if llm.running && !llm.output.isEmpty && thread.id == generatingThreadID {
