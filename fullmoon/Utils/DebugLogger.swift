@@ -14,12 +14,20 @@ class DebugLogger {
     init() {
         // Use Documents directory so it's accessible via Files app
         let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        logFileURL = documentsPath.appendingPathComponent("crash_debug.log")
+
+        // Create filename with timestamp for each app launch
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd_HH-mm-ss"
+        let timestamp = formatter.string(from: Date())
+        let filename = "crash_debug_\(timestamp).log"
+
+        logFileURL = documentsPath.appendingPathComponent(filename)
 
         // Start fresh log on app launch
         let header = """
         ========================================
         App launched at \(Date())
+        Build: \(Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "unknown")
         ========================================
 
         """

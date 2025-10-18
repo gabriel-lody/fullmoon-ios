@@ -181,9 +181,19 @@ struct ConversationView: View {
     // Use @Query with sort to safely access messages from SwiftData
     @Query(sort: \Message.timestamp) private var allMessages: [Message]
 
-    // Filter messages for this thread using threadID instead of relationship
-    // This avoids accessing the thread relationship which can cause crashes during SwiftData updates
+    // Cache messages to prevent accessing SwiftData during generation
+    @State private var cachedMessages: [Message] = []
+    @State private var isGenerating = false
+
+    // Filter messages for this thread using cached data during generation
     private var threadMessages: [Message] {
+        // During generation, use cached messages to avoid SwiftData access
+        if isGenerating {
+            DebugLogger.shared.log("🟣 threadMessages: using cached \(cachedMessages.count) messages (generating)")
+            return cachedMessages
+        }
+
+        // When not generating, query SwiftData and update cache
         DebugLogger.shared.log("🟣 threadMessages computed: filtering \(allMessages.count) messages for thread \(thread.id)")
         let filtered = allMessages.filter { $0.threadID == thread.id }
         DebugLogger.shared.log("🟣 threadMessages computed: found \(filtered.count) messages")
@@ -248,6 +258,31 @@ struct ConversationView: View {
         #if os(iOS)
             .scrollDismissesKeyboard(.interactively)
         #endif
+        .onChange(of: generatingThreadID) { oldValue, newValue in
+            DebugLogger.shared.log("🟣 generatingThreadID changed from \(String(describing: oldValue)) to \(String(describing: newValue))")
+
+            // When generation starts for this thread, cache messages
+            if newValue == thread.id {
+                DebugLogger.shared.log("🟣 generation starting - caching \(threadMessages.count) messages")
+                cachedMessages = threadMessages
+                isGenerating = true
+            }
+            // When generation ends, clear cache
+            else if oldValue == thread.id && newValue == nil {
+                DebugLogger.shared.log("🟣 generation ended - clearing cache")
+                isGenerating = false
+                cachedMessages = []
+            }
+        }
+        .onAppear {
+            DebugLogger.shared.log("🟣 ConversationView appeared for thread: \(thread.id)")
+            // If already generating when view appears, cache messages
+            if generatingThreadID == thread.id {
+                DebugLogger.shared.log("🟣 view appeared during generation - caching messages")
+                cachedMessages = threadMessages
+                isGenerating = true
+            }
+        }
     }
 }
 
