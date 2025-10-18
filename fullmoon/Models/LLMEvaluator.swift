@@ -158,6 +158,7 @@ class LLMEvaluator {
                 return try MLXLMCommon.generate(
                     input: input, parameters: generateParameters, context: context
                 ) { tokens in
+                    DebugLogger.shared.log("🟠 [LLM-13a] callback called with \(tokens.count) tokens")
 
                     var cancelled = false
                     Task { @MainActor in
@@ -166,6 +167,7 @@ class LLMEvaluator {
 
                     // update the output -- this will make the view show the text as it generates
                     if tokens.count % displayEveryNTokens == 0 {
+                        DebugLogger.shared.log("🟠 [LLM-13b] updating output at \(tokens.count) tokens")
                         let text = context.tokenizer.decode(tokens: tokens)
                         Task { @MainActor in
                             self.output = text
@@ -173,6 +175,7 @@ class LLMEvaluator {
                     }
 
                     if tokens.count >= maxTokens || cancelled {
+                        DebugLogger.shared.log("🟠 [LLM-13c] stopping generation")
                         return .stop
                     } else {
                         return .more
