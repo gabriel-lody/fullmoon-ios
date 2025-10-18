@@ -191,13 +191,17 @@ struct ConversationView: View {
     @State private var scrollInterrupted = false
 
     var body: some View {
-        ScrollViewReader { scrollView in
+        DebugLogger.shared.log("🔴 ConversationView body evaluated for thread: \(thread.id)")
+        return ScrollViewReader { scrollView in
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
                     ForEach(threadMessages) { message in
                         MessageView(message: message)
                             .padding()
                             .id(message.id.uuidString)
+                            .onAppear {
+                                DebugLogger.shared.log("🔴 MessageView appeared for message id: \(message.id)")
+                            }
                     }
 
                     if llm.running && !llm.output.isEmpty && thread.id == generatingThreadID {
