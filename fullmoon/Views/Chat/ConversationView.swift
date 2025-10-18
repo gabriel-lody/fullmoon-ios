@@ -6,6 +6,7 @@
 //
 
 import MarkdownUI
+import SwiftData
 import SwiftUI
 
 extension TimeInterval {
@@ -177,6 +178,16 @@ struct ConversationView: View {
     let thread: Thread
     let generatingThreadID: UUID?
 
+    // Use @Query to safely access messages from SwiftData
+    @Query private var allMessages: [Message]
+
+    // Filter messages for this thread and sort them
+    private var threadMessages: [Message] {
+        allMessages
+            .filter { $0.thread?.id == thread.id }
+            .sorted { $0.timestamp < $1.timestamp }
+    }
+
     @State private var scrollID: String?
     @State private var scrollInterrupted = false
 
@@ -185,7 +196,7 @@ struct ConversationView: View {
         return ScrollViewReader { scrollView in
             ScrollView(.vertical) {
                 VStack(alignment: .leading, spacing: 0) {
-                    ForEach(thread.sortedMessages) { message in
+                    ForEach(threadMessages) { message in
                         MessageView(message: message)
                             .padding()
                             .id(message.id.uuidString)
